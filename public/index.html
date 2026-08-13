@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Markdown 閱讀器</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='4' fill='%236e5dd3'/><text x='8' y='11' font-size='7' font-weight='600' font-family='Helvetica,Arial,sans-serif' letter-spacing='0.6' fill='white' text-anchor='middle'>md</text></svg>" />
+  <link rel="stylesheet" href="/vendor/hljs-github.css" id="hljs-light" />
+  <link rel="stylesheet" href="/vendor/hljs-github-dark.css" id="hljs-dark" disabled />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- 左側：清單 / 搜尋 -->
+    <aside id="sidebar">
+      <header class="side-head">
+        <h1>Markdown 閱讀器</h1>
+        <div class="side-head-actions">
+          <button id="theme-btn" title="切換深色/淺色" aria-label="切換主題">◐</button>
+          <button id="sidebar-toggle" title="收合左側清單" aria-label="收合左側清單">
+            <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="10" rx="1.5"/><line x1="6.5" y1="3" x2="6.5" y2="13"/></svg>
+          </button>
+        </div>
+      </header>
+      <div class="search-box">
+        <input id="search" type="search" placeholder="搜尋檔名或內文…" autocomplete="off" />
+        <button id="search-clear" title="清除" hidden>×</button>
+      </div>
+      <div class="sort-bar" id="sort-seg">
+        <button data-sort="name" class="active">名稱</button>
+        <button data-sort="mtime">最近修改</button>
+      </div>
+      <button id="new-file-btn" title="新增 markdown 檔案">＋ 新增檔案</button>
+      <div id="pins" hidden>
+        <div class="pins-title">釘選</div>
+        <div id="pins-list"></div>
+      </div>
+      <nav id="tree" aria-label="檔案清單"></nav>
+      <div id="search-results" hidden></div>
+    </aside>
+
+    <button id="sidebar-expand" class="sidebar-expand-btn" title="展開左側清單" aria-label="展開左側清單" hidden>
+      <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="10" rx="1.5"/><line x1="6.5" y1="3" x2="6.5" y2="13"/></svg>
+    </button>
+
+    <!-- 中間：渲染內容 -->
+    <main id="content">
+      <article id="doc" class="markdown-body">
+        <div class="empty-state">
+          <p>從左側選一個檔案開始閱讀</p>
+        </div>
+      </article>
+    </main>
+
+    <!-- 中間（編輯模式）：左邊原始碼、右邊即時預覽 -->
+    <section id="editor" hidden>
+      <div class="editor-bar">
+        <input id="editor-path" class="editor-file" type="text" spellcheck="false" autocomplete="off"
+               title="改這裡就等於改檔名（連路徑一起改就是換資料夾），存檔時一起生效" />
+        <span class="editor-status" id="editor-status"></span>
+        <button class="btn-ghost" id="editor-cancel">取消 (Esc)</button>
+        <button class="btn-primary" id="editor-save">儲存 (⌘S)</button>
+      </div>
+      <div class="editor-panes">
+        <textarea id="editor-input" spellcheck="false" autocomplete="off"></textarea>
+        <div id="editor-preview" class="markdown-body"></div>
+      </div>
+    </section>
+
+    <!-- 右側：TOC 大綱 -->
+    <aside id="toc-pane" aria-label="目錄大綱">
+      <div class="toc-title">本頁大綱</div>
+      <nav id="toc"></nav>
+    </aside>
+  </div>
+
+  <!-- 新增檔案的小視窗 -->
+  <div id="new-file-modal" hidden>
+    <div class="modal-box">
+      <div class="modal-title" id="modal-title">新增 markdown 檔案</div>
+      <label class="modal-label" for="new-file-path">檔案位置（可含資料夾，資料夾不存在會自動建立）</label>
+      <input id="new-file-path" type="text" placeholder="例如：budget-app/notes/新提案.md" autocomplete="off" spellcheck="false" />
+      <div class="modal-hint">沒打 .md 會自動補上。改路徑就等於換資料夾。</div>
+      <div class="modal-error" id="new-file-error" hidden></div>
+      <div class="modal-actions">
+        <button class="btn-ghost" id="new-file-cancel">取消</button>
+        <button class="btn-primary" id="new-file-ok">建立並開啟</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/vendor/marked.min.js"></script>
+  <script src="/vendor/purify.min.js"></script>
+  <script src="/vendor/highlight.min.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

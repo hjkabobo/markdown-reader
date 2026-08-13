@@ -1,0 +1,9 @@
+# 各機器自己的掃描範圍設定，不同步（範本見 reader.config.example.js）
+reader.config.js
+
+# 執行時產生的檔案，不納入版控
+.reader-state.json
+.launchd.log
+.launchd.err.log
+.DS_Store
+.backups/
