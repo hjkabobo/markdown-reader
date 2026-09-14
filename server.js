@@ -112,7 +112,7 @@ const ROOTS = [
 const EDITABLE_ROOT_IDS = new Set(ROOTS.filter((r) => r.editable).map((r) => r.id));
 
 // 掃描時略過的資料夾
-const SKIP_DIRS = new Set(['node_modules', '.git', '.next', 'dist', 'build', '.cache', 'coverage']);
+const SKIP_DIRS = new Set(['node_modules', '.git', '.next', 'dist', 'build', '.cache', 'coverage', 'target', 'out']);
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
@@ -595,23 +595,40 @@ function broadcastChange(rootId, rel) {
   }
 }
 
+// 一次檔案異動要做什麼：
+//   'ignore' 不關我們的事（跳過的目錄、隱藏檔、其他副檔名的檔案）
+//   'file'   是清單裡的 md/csv，重載這個檔
+//   'tree'   看起來是目錄異動（沒有副檔名），重載檔案樹
+// IntelliJ 啟動時會對整個 repo 狂寫 .class/.jar/.iml 之類的東西，
+// 以前那些都會轉成一次檔案樹重載，左側就一直刷新；現在直接 ignore。
+function classifyChange(filename) {
+  const parts = filename.split(path.sep);
+  if (parts.some((p) => SKIP_DIRS.has(p) || (p.startsWith('.') && p !== '.claude'))) return 'ignore';
+  if (isSupported(filename)) return 'file';
+  return path.extname(filename) ? 'ignore' : 'tree';
+}
+
 let changeTimers = {};
+let treeChangeTimer = null;
 for (const root of ROOTS) {
   try {
     fs.watch(root.dir, { recursive: true }, (eventType, filename) => {
       if (!filename) return;
-      const parts = filename.split(path.sep);
-      if (parts.some((p) => SKIP_DIRS.has(p) || (p.startsWith('.') && p !== '.claude'))) return;
+      const kind = classifyChange(filename);
+      if (kind === 'ignore') return;
+
+      if (kind === 'tree') {
+        // 目錄異動常常一次來一整串，收斂成一次刷新就好。
+        clearTimeout(treeChangeTimer);
+        treeChangeTimer = setTimeout(() => broadcastChange(root.id, ''), 1000);
+        return;
+      }
 
       const key = root.id + '|' + filename;
       clearTimeout(changeTimers[key]);
       changeTimers[key] = setTimeout(() => {
         delete changeTimers[key];
-        if (isSupported(filename)) {
-          broadcastChange(root.id, filename);
-        } else {
-          broadcastChange(root.id, '');
-        }
+        broadcastChange(root.id, filename);
       }, 300);
     });
   } catch {}
@@ -657,6 +674,22 @@ const server = http.createServer(async (req, res) => {
     sendJson(res, 500, { error: String(err && err.message || err) });
   }
 });
+
+if (process.argv.includes('--self-check')) {
+  const assert = require('assert');
+  const c = classifyChange;
+  assert.strictEqual(c('docs/readme.md'), 'file');
+  assert.strictEqual(c('data/rows.csv'), 'file');
+  assert.strictEqual(c(path.join('src', 'Foo.java')), 'ignore');
+  assert.strictEqual(c(path.join('src', 'Foo.class')), 'ignore');
+  assert.strictEqual(c('app.iml'), 'ignore');
+  assert.strictEqual(c(path.join('target', 'classes', 'x.md')), 'ignore');
+  assert.strictEqual(c(path.join('.idea', 'workspace.xml')), 'ignore');
+  assert.strictEqual(c(path.join('docs', 'guide')), 'tree');
+  assert.strictEqual(c(path.join('.claude', 'notes.md')), 'file');
+  console.log('self-check ok');
+  process.exit(0);
+}
 
 server.listen(PORT, '127.0.0.1', () => {
   console.log('\n  md-reader 已啟動');
